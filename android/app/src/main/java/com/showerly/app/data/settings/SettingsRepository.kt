@@ -7,8 +7,12 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.showerly.app.domain.model.Campus
 import com.showerly.app.domain.model.DarkModePref
 import com.showerly.app.domain.model.Gender
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
 data class AppSettings(
     val endpoint: String = AppSettings.DEFAULT_ENDPOINT,
@@ -27,17 +31,28 @@ data class AppSettings(
     }
 }
 
-class SettingsRepository(private val dataStore: DataStore<Preferences>) {
-    val settingsFlow: Flow<AppSettings> = dataStore.data.map { prefs ->
-        AppSettings(
-            endpoint = prefs[KEY_ENDPOINT] ?: AppSettings.DEFAULT_ENDPOINT,
-            authHeaderName = prefs[KEY_HEADER_NAME] ?: "",
-            authHeaderValue = prefs[KEY_HEADER_VALUE] ?: "",
-            gender = prefs[KEY_GENDER] ?: Gender.MALE.name,
-            campus = prefs[KEY_CAMPUS] ?: Campus.CHANGAN.name,
-            darkMode = prefs[KEY_DARK_MODE] ?: DarkModePref.SYSTEM.name
-        )
-    }
+class SettingsRepository(
+    private val dataStore: DataStore<Preferences>,
+    scope: CoroutineScope
+) {
+    private fun map(prefs: Preferences): AppSettings = AppSettings(
+        endpoint = prefs[KEY_ENDPOINT] ?: AppSettings.DEFAULT_ENDPOINT,
+        authHeaderName = prefs[KEY_HEADER_NAME] ?: "",
+        authHeaderValue = prefs[KEY_HEADER_VALUE] ?: "",
+        gender = prefs[KEY_GENDER] ?: Gender.MALE.name,
+        campus = prefs[KEY_CAMPUS] ?: Campus.CHANGAN.name,
+        darkMode = prefs[KEY_DARK_MODE] ?: DarkModePref.SYSTEM.name
+    )
+
+    private val raw: Flow<AppSettings> = dataStore.data.map { map(it) }
+
+    // 冷流：首次读取或需要“保证最新”时使用（如设置页初始化）
+    val settingsFlow: Flow<AppSettings> = raw
+
+    // 内存缓存：UI collectAsState / 拦截器 current 直接用，不阻塞线程
+    val settings: StateFlow<AppSettings> = raw.stateIn(scope, SharingStarted.Eagerly, AppSettings())
+
+    val current: AppSettings get() = settings.value
 
     suspend fun save(settings: AppSettings) {
         dataStore.edit { prefs ->

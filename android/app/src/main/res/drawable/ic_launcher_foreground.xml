@@ -1,0 +1,36 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- 主水滴 -->
+    <path android:pathData="M54,22 C54,22 32,47 32,62 A22,22 0 0 0 76,62 C76,47 54,22 54,22 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="54"
+                android:startY="22"
+                android:endX="54"
+                android:endY="84"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFE1F5FE" />
+                <item android:offset="0.55" android:color="#FF4FC3F7" />
+                <item android:offset="1.0" android:color="#FF0277BD" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- 高光 -->
+    <path
+        android:fillColor="#B3FFFFFF"
+        android:pathData="M42,44 C42,39.8 44.5,36.5 47,36.5 C49.5,36.5 52,39.8 52,44 C52,48.2 49.5,51.5 47,51.5 C44.5,51.5 42,48.2 42,44 Z" />
+    <!-- 飞溅气泡 -->
+    <path
+        android:fillColor="#66FFFFFF"
+        android:pathData="M33,30 A4,4 0 1 0 33,38 A4,4 0 1 0 33,30 Z" />
+    <path
+        android:fillColor="#66FFFFFF"
+        android:pathData="M73,35 A3,3 0 1 0 73,41 A3,3 0 1 0 73,35 Z" />
+    <path
+        android:fillColor="#4DFFFFFF"
+        android:pathData="M24,48 A2.5,2.5 0 1 0 24,53 A2.5,2.5 0 1 0 24,48 Z" />
+</vector>

@@ -16,7 +16,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val container = (application as ShowerlyApplication).container
         setContent {
-            val settings by container.settingsRepository.settingsFlow.collectAsState(initial = AppSettings())
+            val settings by container.settingsRepository.settings.collectAsState(initial = AppSettings())
             ShowerlyTheme(
                 darkPref = settings.darkModeEnum
             ) {

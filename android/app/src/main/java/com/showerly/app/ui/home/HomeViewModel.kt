@@ -13,7 +13,8 @@ import com.showerly.app.domain.model.Gender
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -30,7 +31,7 @@ data class HomeUiState(
 )
 
 class HomeViewModel(private val container: AppContainer) : ViewModel() {
-    private val settings = container.settingsRepository
+    private val repo = container.settingsRepository
     private val api = container.schoolApiService
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -38,19 +39,20 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
 
     init {
         viewModelScope.launch {
-            settings.settingsFlow.collect { s ->
-                _uiState.value = _uiState.value.copy(
-                    gender = s.genderEnum,
-                    campus = s.campusEnum
-                )
-                refresh()
-            }
+            // 仅当性别/校区变化才刷新，深色模式切换不触发网络请求
+            repo.settings
+                .map { it.genderEnum to it.campusEnum }
+                .distinctUntilChanged()
+                .collect { (g, c) ->
+                    _uiState.value = _uiState.value.copy(gender = g, campus = c)
+                    refresh()
+                }
         }
     }
 
     fun refresh() {
         viewModelScope.launch {
-            val s = settings.settingsFlow.first()
+            val s = repo.settings.value
             val campus = s.campusEnum
             if (!campus.supported) {
                 _uiState.value = _uiState.value.copy(
@@ -80,7 +82,11 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
                     )
                 }
                 .onFailure { e ->
-                    _uiState.value = _uiState.value.copy(isLoading = false, error = e.message ?: "请求失败，请检查网络或接口")
+                    // 保留已有数据，仅提示错误，避免刷新时白屏
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = e.message ?: "请求失败，请检查网络或接口"
+                    )
                 }
         }
     }

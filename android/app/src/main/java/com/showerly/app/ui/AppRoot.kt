@@ -35,7 +35,7 @@ fun AppRoot(container: AppContainer) {
                 selected = tab == 0,
                 onClick = { tab = 0 },
                 icon = { Icon(Icons.Filled.Home, contentDescription = null) },
-                label = { Text("主屏") }
+                label = { Text("主页") }
             )
             NavigationBarItem(
                 selected = tab == 1,

@@ -20,11 +20,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AssistChip
@@ -34,14 +34,11 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -50,10 +47,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -64,7 +59,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.showerly.app.di.AppContainer
 import com.showerly.app.domain.model.BathroomStatus
-import kotlinx.coroutines.launch
 
 private val EmptyColor = Color(0xFF2E8BFF)
 private val BusyColor = Color(0xFFFFC107)
@@ -75,28 +69,16 @@ private val FullColor = Color(0xFFE53935)
 fun HomeScreen(container: AppContainer) {
     val vm: HomeViewModel = viewModel(factory = HomeViewModel.factory(container))
     val state by vm.uiState.collectAsState()
-    val snackbar = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("澡堂人流") },
+                title = { Text("Showerly") },
                 actions = {
                     IconButton(onClick = vm::refresh) {
                         Icon(Icons.Filled.Refresh, contentDescription = "刷新")
                     }
                 }
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbar) },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = {
-                    scope.launch { snackbar.showSnackbar("公寓洗浴接口尚未接入，敬请期待") }
-                },
-                icon = {},
-                text = { Text("公寓洗浴") }
             )
         }
     ) { padding ->
@@ -109,14 +91,14 @@ fun HomeScreen(container: AppContainer) {
                 state.error != null && state.bathrooms.isEmpty() -> ErrorPanel(state.error!!, vm::refresh)
                 state.bathrooms.isEmpty() && state.isLoading -> LoadingPanel()
                 state.bathrooms.isEmpty() -> ErrorPanel(state.error ?: "当前筛选下暂无浴室", vm::refresh)
-                else -> CrowdPager(state, vm::refresh)
+                else -> CrowdPager(state)
             }
         }
     }
 }
 
 @Composable
-private fun CrowdPager(state: HomeUiState, onRefresh: () -> Unit) {
+private fun CrowdPager(state: HomeUiState) {
     val pagerState = rememberPagerState(pageCount = { state.bathrooms.size })
     LaunchedEffect(state.bathrooms.size) {
         if (pagerState.currentPage >= state.bathrooms.size && pagerState.currentPage != 0) {
@@ -127,7 +109,7 @@ private fun CrowdPager(state: HomeUiState, onRefresh: () -> Unit) {
         OrderChip(state)
         HorizontalPager(
             state = pagerState,
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
             modifier = Modifier.weight(1f)
         ) { page ->
             BathroomCard(state.bathrooms[page], state.timeText)
@@ -142,7 +124,7 @@ private fun OrderChip(state: HomeUiState) {
         text = "${state.gender.label}浴 · ${state.campus.label} · ${state.bathrooms.size} 个浴室",
         style = MaterialTheme.typography.labelLarge,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp)
+        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
     )
 }
 
@@ -164,7 +146,10 @@ private fun BathroomCard(bathroom: BathroomStatus, timeText: String) {
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)
     ) {
         Column(
-            Modifier.fillMaxSize().padding(20.dp),
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(
@@ -179,9 +164,9 @@ private fun BathroomCard(bathroom: BathroomStatus, timeText: String) {
                 )
                 AssistChip(onClick = {}, label = { Text(bathroom.statusLabel) })
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             BreathingBall(bathroom.occupancyRatio)
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
                 text = "${bathroom.useCount} 人在洗",
                 style = MaterialTheme.typography.headlineSmall,
@@ -192,18 +177,18 @@ private fun BathroomCard(bathroom: BathroomStatus, timeText: String) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
             LinearProgressIndicator(
                 progress = { bathroom.occupancyRatio },
                 modifier = Modifier.fillMaxWidth().height(8.dp),
                 color = ratioColor(bathroom.occupancyRatio),
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(14.dp))
             PlaceholderRow("历史人数趋势", "需后端 D1 采集历史后展示")
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             PlaceholderRow("浴位示意图", "后续接入逐浴位状态接口")
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(12.dp))
             Text(
                 text = "更新于 $timeText",
                 style = MaterialTheme.typography.bodySmall,
@@ -216,6 +201,9 @@ private fun BathroomCard(bathroom: BathroomStatus, timeText: String) {
 @Composable
 private fun BreathingBall(ratio: Float) {
     val ballColor = ratioColor(ratio)
+    val glow = ballColor.copy(alpha = 0.30f)
+    val shimmer = ballColor.copy(alpha = 0.85f)
+    val brush = remember(ballColor) { Brush.radialGradient(listOf(shimmer, glow)) }
     val transition = rememberInfiniteTransition(label = "breathing")
     val scale by transition.animateFloat(
         initialValue = 0.94f,
@@ -223,23 +211,14 @@ private fun BreathingBall(ratio: Float) {
         animationSpec = infiniteRepeatable(tween(1500, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "scale"
     )
-    val glow by transition.animateFloat(
-        initialValue = 0.30f,
-        targetValue = 0.52f,
-        animationSpec = infiniteRepeatable(tween(1500), RepeatMode.Reverse),
-        label = "glow"
-    )
-    Box(Modifier.size(200.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(160.dp), contentAlignment = Alignment.Center) {
         Box(
             Modifier
-                .size(160.dp)
+                .size(120.dp)
                 .graphicsLayer {
                     scaleX = scale; scaleY = scale
                 }
-                .background(
-                    Brush.radialGradient(listOf(ballColor.copy(alpha = 0.85f), ballColor.copy(alpha = glow))),
-                    CircleShape
-                )
+                .background(brush, CircleShape)
                 .border(10.dp, ballColor, CircleShape)
         )
     }
