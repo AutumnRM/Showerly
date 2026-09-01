@@ -1,0 +1,10 @@
+-- Cloudflare D1 表结构
+CREATE TABLE IF NOT EXISTS samples (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts INTEGER NOT NULL,
+  total INTEGER NOT NULL,
+  capacity INTEGER NOT NULL DEFAULT 0,
+  status TEXT,
+  raw TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_samples_ts ON samples(ts);

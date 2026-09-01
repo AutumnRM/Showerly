@@ -1,0 +1,31 @@
+package com.showerly.app.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+val WaterPrimary = Color(0xFF00657A)
+val WaterOnPrimary = Color(0xFFFFFFFF)
+val WaterPrimaryContainer = Color(0xFF9CEAFE)
+val WaterOnPrimaryContainer = Color(0xFF001F26)
+val WaterSecondary = Color(0xFF4B6268)
+val WaterOnSecondary = Color(0xFFFFFFFF)
+val WaterSecondaryContainer = Color(0xFFCDE7EE)
+val WaterOnSecondaryContainer = Color(0xFF061F25)
+val WaterTertiary = Color(0xFF575C7D)
+val WaterBackground = Color(0xFFFBFCFE)
+val WaterSurface = Color(0xFFFBFCFE)
+val WaterOnSurface = Color(0xFF191C1E)
+val WaterOutline = Color(0xFF70797C)
+
+val WaterPrimaryDark = Color(0xFF7ED2E8)
+val WaterOnPrimaryDark = Color(0xFF00363F)
+val WaterPrimaryContainerDark = Color(0xFF004E5B)
+val WaterOnPrimaryContainerDark = Color(0xFF9CEAFE)
+val WaterSecondaryDark = Color(0xFFB1CBD2)
+val WaterOnSecondaryDark = Color(0xFF1B343A)
+val WaterSecondaryContainerDark = Color(0xFF324B51)
+val WaterOnSecondaryContainerDark = Color(0xFFCDE7EE)
+val WaterTertiaryDark = Color(0xFFC2C4E8)
+val WaterBackgroundDark = Color(0xFF191C1E)
+val WaterSurfaceDark = Color(0xFF191C1E)
+val WaterOnSurfaceDark = Color(0xFFE0E3E5)
+val WaterOutlineDark = Color(0xFF8A9397)

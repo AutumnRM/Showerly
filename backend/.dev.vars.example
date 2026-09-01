@@ -1,0 +1,6 @@
+# 校方接口完整请求 URL（含路径与参数）。留空则后端使用演示数据，便于联调。
+SCHOOL_API_URL=
+# 认证头名称，一般 Authorization
+SCHOOL_HEADER_NAME=Authorization
+# 认证头值，例如 "Bearer <token>" 或校方要求的原始值
+SCHOOL_TOKEN=

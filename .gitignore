@@ -1,0 +1,31 @@
+# Gradle / Android
+.gradle/
+build/
+app/build/
+local.properties
+secrets.local.properties
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+*.jks
+*.keystore
+keys.properties
+
+# Cloudflare Workers
+backend/.dev.vars
+backend/node_modules/
+backend/.wrangler/
+backend/.env
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs / misc
+*.log
+*.tmp

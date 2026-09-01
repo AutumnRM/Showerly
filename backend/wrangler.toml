@@ -1,0 +1,12 @@
+name = "showerly"
+main = "src/index.js"
+compatibility_date = "2025-03-01"
+
+# 每分钟触发一次，用于轮询校方接口
+[triggers]
+crons = ["*/1 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "showerly"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
