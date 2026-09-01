@@ -4,8 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.showerly.app.data.settings.AppSettings
 import com.showerly.app.di.AppContainer
+import com.showerly.app.domain.model.Campus
+import com.showerly.app.domain.model.DarkModePref
+import com.showerly.app.domain.model.Gender
+import com.showerly.app.domain.model.ThemePreset
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,11 +16,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class SettingsUiState(
-    val endpoint: String = "",
-    val headerName: String = "",
-    val headerValue: String = "",
-    val demoMode: Boolean = false,
-    val isSaving: Boolean = false
+    val gender: Gender = Gender.MALE,
+    val campus: Campus = Campus.CHANGAN,
+    val darkMode: DarkModePref = DarkModePref.SYSTEM,
+    val theme: ThemePreset = ThemePreset.TEAL
 )
 
 class SettingsViewModel(private val container: AppContainer) : ViewModel() {
@@ -28,33 +30,37 @@ class SettingsViewModel(private val container: AppContainer) : ViewModel() {
         viewModelScope.launch {
             val s = container.settingsRepository.settingsFlow.first()
             _uiState.value = SettingsUiState(
-                endpoint = s.schoolEndpoint,
-                headerName = s.authHeaderName,
-                headerValue = s.authHeaderValue,
-                demoMode = s.demoMode
+                gender = s.genderEnum,
+                campus = s.campusEnum,
+                darkMode = s.darkModeEnum,
+                theme = s.themeEnum
             )
         }
     }
 
-    fun setEndpoint(v: String) { _uiState.value = _uiState.value.copy(endpoint = v) }
-    fun setHeaderName(v: String) { _uiState.value = _uiState.value.copy(headerName = v) }
-    fun setHeaderValue(v: String) { _uiState.value = _uiState.value.copy(headerValue = v) }
-    fun setDemoMode(v: Boolean) { _uiState.value = _uiState.value.copy(demoMode = v) }
+    fun setGender(v: Gender) { _uiState.value = _uiState.value.copy(gender = v); persist() }
+    fun setCampus(v: Campus) {
+        if (v.supported) {
+            _uiState.value = _uiState.value.copy(campus = v)
+            persist()
+        }
+    }
+    fun setDarkMode(v: DarkModePref) { _uiState.value = _uiState.value.copy(darkMode = v); persist() }
+    fun setTheme(v: ThemePreset) { _uiState.value = _uiState.value.copy(theme = v); persist() }
 
-    fun save(onSaved: () -> Unit) {
+    // 仅合并 UI 控制的字段，接口/auth 等保持现状。
+    private fun persist() {
+        val s = _uiState.value
         viewModelScope.launch {
-            val s = _uiState.value
-            _uiState.value = s.copy(isSaving = true)
+            val current = container.settingsRepository.settingsFlow.first()
             container.settingsRepository.save(
-                AppSettings(
-                    schoolEndpoint = s.endpoint.trim(),
-                    authHeaderName = s.headerName.trim(),
-                    authHeaderValue = s.headerValue.trim(),
-                    demoMode = s.demoMode
+                current.copy(
+                    gender = s.gender.name,
+                    campus = s.campus.name,
+                    darkMode = s.darkMode.name,
+                    theme = s.theme.name
                 )
             )
-            _uiState.value = _uiState.value.copy(isSaving = false)
-            onSaved()
         }
     }
 

@@ -29,3 +29,13 @@ Thumbs.db
 # Logs / misc
 *.log
 *.tmp
+
+
+# Local scratch / reverse-engineering captures (never commit)
+/*.png
+/ui.xml
+/_catalog.json
+/_f.js
+/_gen.js
+/_mmkv.bin
+/_*.txt

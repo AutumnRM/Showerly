@@ -1,6 +1,6 @@
-# 校方接口完整请求 URL（含路径与参数）。留空则后端使用演示数据，便于联调。
-SCHOOL_API_URL=
+# 校方接口完整请求 URL（含路径与参数，如 campusId/uid）。留空则后端使用演示数据，便于联调。
+SCHOOL_API_URL=https://cloudman.jinghaojian.net/bathroom?campusId=4&uid=...
 # 认证头名称，一般 Authorization
 SCHOOL_HEADER_NAME=Authorization
-# 认证头值，例如 "Bearer <token>" 或校方要求的原始值
+# 认证头值，例如 Bearer <JWT>（可带可不带 Bearer 前缀，后端自动补）
 SCHOOL_TOKEN=

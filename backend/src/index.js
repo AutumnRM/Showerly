@@ -1,5 +1,9 @@
 // Showerly 后端：每分钟轮询校方接口，写入 D1，并对内提供查询 API。
-// 校方响应字段需在抓包后按实际结构调整 normalize()。
+// 校方接口（2026-09-01 抓包确认）：
+//   GET https://cloudman.jinghaojian.net/bathroom?campusId=4&uid=...
+//   Authorization: Bearer <JWT>
+//   code: "200", msg: "成功", data: [{ id, name, sex, maxLoad, useCount,
+//                                     bookingDeviceCnt, availableBookingDeviceCnt }]
 
 export default {
   async scheduled(event, env) {
@@ -81,30 +85,65 @@ async function recordSample(env) {
     .run();
 }
 
-function buildAuthHeaders(env) {
-  const name = env.SCHOOL_HEADER_NAME || 'Authorization';
-  const headers = { Accept: 'application/json' };
-  if (env.SCHOOL_TOKEN) headers[name] = env.SCHOOL_TOKEN;
-  return headers;
+// 模拟校方返回，便于本地/无 token 时试用。
+function demo() {
+  return {
+    code: '200',
+    msg: '成功',
+    data: [
+      { id: 31, name: '博硕2楼男', sex: 0, maxLoad: 62, useCount: 12, bookingDeviceCnt: 0, availableBookingDeviceCnt: 0 },
+      { id: 46, name: '东区第一浴室-1层', sex: 0, maxLoad: 20, useCount: 14, bookingDeviceCnt: 0, availableBookingDeviceCnt: 0 }
+    ]
+  };
 }
 
+// 组装校方请求头。SCHOOL_TOKEN 为 JWT，可带或不带 "Bearer " 前缀。
+function buildAuthHeaders(env) {
+  const token = env.SCHOOL_TOKEN || '';
+  const auth = token.includes(' ') ? token : (token ? 'Bearer ' + token : '');
+  const ts = String(Date.now());
+  const reqid = ts + '-' + (crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-4000-8000-000000000000');
+  return {
+    'accept': 'application/json',
+    'accept-language': 'zh-CN,zh;q=0.8',
+    'user-agent': 'okhttp-okgo/jeasonlzy',
+    'authorization': auth,
+    'timestamp': ts,
+    'requestid': reqid,
+    'os': 'android',
+    'versionno': '120',
+    'accept-encoding': 'gzip'
+  };
+  // 校方另带 sign / encrypt 头，但经 PC 端裸测：仅带 authorization 等即可 200，可忽略（2026-09-01 验证）。
+}
+
+// 把校方整包响应归一化成汇总 + 每个浴室明细。
 function normalize(payload) {
-  const d = payload?.data ?? payload;
-  const total = num(
-    d?.total ?? d?.count ?? d?.current ?? d?.used ?? payload?.total ?? payload?.count ?? 0
-  );
-  const capacity = num(d?.capacity ?? d?.totalBays ?? payload?.capacity ?? 0);
+  const list = Array.isArray(payload?.data) ? payload.data : [];
+  const bathrooms = list.map((b) => {
+    const maxLoad = num(b?.maxLoad);
+    const useCount = num(b?.useCount);
+    return {
+      id: b?.id ?? null,
+      name: b?.name ?? null,
+      sex: num(b?.sex),
+      maxLoad,
+      useCount,
+      bookingDeviceCnt: num(b?.bookingDeviceCnt),
+      availableBookingDeviceCnt: num(b?.availableBookingDeviceCnt),
+      vacant: Math.max(0, maxLoad - useCount)
+    };
+  });
+  const total = bathrooms.reduce((s, b) => s + b.useCount, 0);
+  // capacity 用 max(maxLoad, useCount) 累加，避免个别浴室 useCount>maxLoad 时出现负的空位。
+  const capacity = bathrooms.reduce((s, b) => s + Math.max(b.maxLoad, b.useCount), 0);
+
   let status = 'unknown';
   if (capacity > 0) {
     const r = total / capacity;
     status = r >= 0.9 ? 'full' : r >= 0.6 ? 'busy' : r > 0 ? 'normal' : 'empty';
   }
-  return { total, capacity, status };
-}
-
-function demo() {
-  const total = 55 + Math.floor(Math.random() * 20);
-  return { data: { total, capacity: 80, status: 'busy' } };
+  return { total, capacity, status, bathrooms };
 }
 
 function num(v) {
@@ -123,3 +162,4 @@ function json(obj, headers, status = 200) {
     headers: { 'Content-Type': 'application/json; charset=utf-8', ...headers }
   });
 }
+

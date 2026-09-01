@@ -1,31 +1,58 @@
 # 校方接口逆向指南
 
-> 目标：从校方 App 中定位“澡堂人数/空位”接口，拿到 URL、鉴权方式和返回粒度。此文档面向 root 安卓 14 手机 + 一台 PC。
+> 目标：定位校方 App（云达人）中“澡堂人数/空位”接口。本文档基于 root 安卓 14 手机（Mi MIX 2S + Magisk）+ 一台 PC，**已实际跑通**。
 
-## 前置工具
-- PC 端：`mitmproxy`（或 HTTP Toolkit / Charles）。本仓库推荐 mitmproxy，命令行可控、免费。
-- root 手机：Magisk（或 KernelSU），安装系统级 CA 证书。若校方 App 用证书固定（cert pinning），用 Frida + objection，或 LSPosed + 反证书固定模块。
+## ✅ 已确认（2026-09-01，Phase 0 成果）
 
-## 抓包步骤
-1. PC 运行 `mitmproxy -p 8888`（或 `mitmweb` 开图形界面）。
-2. 手机把 Wi-Fi 代理指向 PC 的 `IP:8888`（本机需与 PC 在同一局域网；用非 root 手机开热点即可）。
-3. 打开浏览器访问 `http://mitm.it`，按指示把证书安装为“系统 CA”（root 后可用 Magisk 模块把证书塞进系统目录），否则校方 App 会忽略代理。
-4. 校方 App 触发一次“查看澡堂”/“预约”操作，在 mitmproxy 里筛选出对应请求。
-5. 记录三项关键信息：
-   - 请求 URL（查人数/空位的完整地址，含参数与路径）。
-   - 鉴权方式（Header token、Cookie，或带签名的 query 参数）。
-   - 响应体结构（是总人数，还是逐浴位状态数组）。
+- 数据服务器：`cloudman.jinghaojian.net`（阿里云 `8.141.169.103:443`）
+- 接口：`GET https://cloudman.jinghaojian.net/bathroom?campusId=4&uid=1250962`
+- 鉴权头：`Authorization: Bearer <JWT>`
+- 额外必需头：`timestamp`（ms）、`requestid`（`<ts>-<uuid>`）、`os=android`、`versionno=120`、`user-agent=okhttp-okgo/jeasonlzy`
+- `sign`、`encrypt` 头（疑似签名/加密）**经 PC 端裸测可不带**：仅带 `authorization` + `timestamp`/`requestid` 等即返回 200，已忽略（2026-09-01 验证）。
+- 返回粒度：**一次请求返回该校区全部浴室数组**。示例：
+  ```json
+  {"code":"200","msg":"成功","data":[{
+    "id":31,"name":"博硕2楼男","sex":0,"maxLoad":62,"useCount":3,
+    "bookingDeviceCnt":0,"availableBookingDeviceCnt":0
+  },{
+    "id":46,"name":"东区第一浴室-1层","sex":0,"maxLoad":5,"useCount":8,
+    "bookingDeviceCnt":0,"availableBookingDeviceCnt":0
+  }]}
+  ```
+  - `id`：浴室编号；`name`：浴室名；`sex`：0=男/1=女
+  - `maxLoad`：容量；`useCount`：当前使用数
+  - `bookingDeviceCnt`：预约设备数；`availableBookingDeviceCnt`：可用空位数
+  - 空位 = `maxLoad - useCount`（下限 0）。注意个别浴室出现 `useCount>maxLoad`（如 8>5），容量累加时用 `max(maxLoad,useCount)`，避免负空位。
 
-## 证书固定绕过（如需）
-- `frida`：`frida -U -f com.example.schoolapp -l bypass.js`，配合 objection 的 `android sslpinning disable`。
-- `LSPosed`：安装“JustTrustMe / TrustMeAlready”类模块，重启 App。
+## 待办
+- 遍历 `campusId`（如 0~9）确认全部校区，用于 App 覆盖全校。
+- 确认 JWT `exp` 判断 token 有效期；若过短，把 login/SSO 列入 TODO。
+- ~~确认 `sign`/`encrypt` 用途~~ 已解决：PC 端裸测可不带，Workers 可直接代理。
+
+## 实操路径（PCAPdroid，已跑通）
+
+### 工具
+- 手机：PCAPdroid v2.0.0（GitHub 官方 APK）+ PCAPdroid-mitm addon v2.4（arm64）。
+- root 授权给 PCAPdroid，把它的 CA 装入系统信任区（本机直接把 `81c450f1.0` 拷进 `/system/etc/security/cacerts/` 和 `/apex/com.android.conscrypt/cacerts/`）。
+
+### 步骤
+1. PCAPdroid 设置：开启 **TLS decryption**，目标应用选**云达人**，dump 模式选 **无转储**（导出用「连接列表 → ⋮ → 另存为 CSV」，或逐条看 HTTP 标签）。
+2. 点开始，允许 VPN；进云达人打开 **澡堂/浴室** 页面，下拉刷新。
+3. 停止后，连接列表里找 `cloudman.jinghaojian.net:443` 且**解密成功**的那条，点进「HTTP」标签看请求 URL 与响应 JSON。
+4. 广告/统计域名直接无视：`ulogs.umeng.com`、`apmplus.volces.com`、`fancyapi.com`、`beizi.biz`、`lrtb.net`、`zhangyuyidong.cn`。
+
+### 证书固定绕过（如需）
+- on-device 无法解密时改用 `frida -U -f com.jhj.cloudman -l bypass.js`，或 LSPosed + JustTrustMe/TrustMeAlready，重启 App。
+- 本案例未到证书固定那一步：把 CA 装成**系统 CA** 后即成功解密。
 
 ## 需要带回的数据
-- `SCHOOL_API_URL`：查人数的完整请求 URL。
-- `SCHOOL_TOKEN`：鉴权令牌（header 或 cookie 值）。请勿提交到仓库。
-- 响应字段映射：把 JSON 里的“人数”“总容量”“时间”等字段名记下来，用于修改 `android/app/src/main/java/com/showerly/app/data/remote/dto/CrowdApiResponse.kt` 与后端 `backend/src/index.js` 的解析逻辑。
-- 返回粒度：如果是逐浴位数组，记录每个浴位的状态标识（空闲/占用/故障），用于后续“损坏位判定”。
+- `SCHOOL_API_URL`：完整请求 URL（含 `campusId` 与 `uid` 参数）。
+- `SCHOOL_TOKEN`：`Bearer <JWT>`。请勿提交到仓库。
+- 响应字段映射已确认，对应 `android/.../dto/CrowdApiResponse.kt` 与 `backend/src/index.js`。
 
 ## 注意事项
-- 不要在校方系统上做高频 or 恶意请求；控制轮询频率（每分钟一次足够了）。
-- token 有有效期，记录失效时长；若过短，把 login/SSO 流程补进 TODO。
+- 控制轮询频率：每分钟一次足够，避免给校方系统造成压力。
+- token 有有效期；记录失效时长，过短则把 login/SSO 补入 TODO。
+- 涉及校方数据的接口，仅供学习/校内小范围使用，勿公开真实 token 与 PII。
+
+
