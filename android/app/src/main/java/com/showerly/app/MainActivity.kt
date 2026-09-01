@@ -18,7 +18,6 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settings by container.settingsRepository.settingsFlow.collectAsState(initial = AppSettings())
             ShowerlyTheme(
-                preset = settings.themeEnum,
                 darkPref = settings.darkModeEnum
             ) {
                 AppRoot(container)

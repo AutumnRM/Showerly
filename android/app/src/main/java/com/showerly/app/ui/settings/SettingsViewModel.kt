@@ -8,7 +8,6 @@ import com.showerly.app.di.AppContainer
 import com.showerly.app.domain.model.Campus
 import com.showerly.app.domain.model.DarkModePref
 import com.showerly.app.domain.model.Gender
-import com.showerly.app.domain.model.ThemePreset
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,8 +17,7 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val gender: Gender = Gender.MALE,
     val campus: Campus = Campus.CHANGAN,
-    val darkMode: DarkModePref = DarkModePref.SYSTEM,
-    val theme: ThemePreset = ThemePreset.TEAL
+    val darkMode: DarkModePref = DarkModePref.SYSTEM
 )
 
 class SettingsViewModel(private val container: AppContainer) : ViewModel() {
@@ -32,8 +30,7 @@ class SettingsViewModel(private val container: AppContainer) : ViewModel() {
             _uiState.value = SettingsUiState(
                 gender = s.genderEnum,
                 campus = s.campusEnum,
-                darkMode = s.darkModeEnum,
-                theme = s.themeEnum
+                darkMode = s.darkModeEnum
             )
         }
     }
@@ -46,7 +43,6 @@ class SettingsViewModel(private val container: AppContainer) : ViewModel() {
         }
     }
     fun setDarkMode(v: DarkModePref) { _uiState.value = _uiState.value.copy(darkMode = v); persist() }
-    fun setTheme(v: ThemePreset) { _uiState.value = _uiState.value.copy(theme = v); persist() }
 
     // 仅合并 UI 控制的字段，接口/auth 等保持现状。
     private fun persist() {
@@ -57,8 +53,7 @@ class SettingsViewModel(private val container: AppContainer) : ViewModel() {
                 current.copy(
                     gender = s.gender.name,
                     campus = s.campus.name,
-                    darkMode = s.darkMode.name,
-                    theme = s.theme.name
+                    darkMode = s.darkMode.name
                 )
             )
         }

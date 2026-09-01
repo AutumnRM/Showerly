@@ -10,11 +10,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import com.showerly.app.domain.model.DarkModePref
-import com.showerly.app.domain.model.ThemePreset
+
+private const val DEFAULT_SEED = 0xFF00657A
 
 @Composable
 fun ShowerlyTheme(
-    preset: ThemePreset = ThemePreset.TEAL,
     darkPref: DarkModePref = DarkModePref.SYSTEM,
     content: @Composable () -> Unit
 ) {
@@ -24,7 +24,7 @@ fun ShowerlyTheme(
         DarkModePref.SYSTEM -> isSystemInDarkTheme()
     }
     MaterialTheme(
-        colorScheme = buildScheme(preset.argb, dark),
+        colorScheme = buildScheme(DEFAULT_SEED, dark),
         typography = ShowerlyTypography,
         content = content
     )

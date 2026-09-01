@@ -6,7 +6,7 @@
 - **无 Splash**：冷启动直接进主屏，数据异步加载（先骨架屏/占位，不阻塞首帧）。
 - **单 Activity + Navigation Compose**，全 App 仅 2 个顶层目的地（主屏 / 设置）。
 - **极速**：主屏数据极小（当前校区+性别仅 1~3 条），首屏只请求所需；地图/图表按需懒加载。
-- 视觉统一走 **Material 3**（`MaterialTheme` + 动态取色/自定义主题色 + 深色模式）。
+- 视觉统一走 **Material 3**（`MaterialTheme` + 深色模式）。
 
 ## 1. 导航图（Mermaid）
 
@@ -41,7 +41,6 @@ flowchart TD
 - 内容：
   - **性别**（男/女）
   - **校区**（默认校区；校区可自定义命名）
-  - **主题色**（Material 3 取色）
   - **深色模式**（跟随系统 / 浅色 / 深色）
   - 底部**个人信息**（署名 + GitHub 链接等）
 - 保存即时生效并回主屏刷新；性别/校区改动只刷新主屏，不改接口鉴权（无需鉴权）。
@@ -51,7 +50,7 @@ flowchart TD
 - `home` 是唯一数据目的地：内部用 `HorizontalPager` 承载多张浴室卡片，不嵌套 NavGraph。
 - 卡片区可点进 `detail/{id}`（如果做详情页）；默认卡片本身就是高清信息页。
 - 圆形切换钮：若做全屏切换器，则作为 `dialog`/全屏 destination 或直接改 `HorizontalPager` 的数据源；**待公寓接口**。
-- 主题色 / 深色模式：通过 `SettingsRepository` 持久化，`App` 层持有 `ThemeState` 包裹 `MaterialTheme`，改动即时重组全 App。
+- 深色模式：通过 `SettingsRepository` 持久化，`App` 层 `ShowerlyTheme` 包裹 `MaterialTheme`，改动即时重组全 App。
 - 返回栈：主屏不重复入栈；设置返回主屏。
 
 ## 4. 待办（影响卡片内容）
@@ -60,4 +59,4 @@ flowchart TD
 - **公寓洗浴**：圆形切换钮的数据源，待今晚抓包 `cloudman.jinghaojian.net` 的“公寓洗浴”接口后接入。
 
 ## 5. 主题
-- Material 3 动态取色（Android 12+），并支持用户自选主题色 + 深浅模式；默认跟随系统。
+- Material 3 深浅模式：跟随系统 / 浅色 / 深色，默认跟随系统。
