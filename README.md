@@ -47,7 +47,7 @@ adb shell am start -n com.showerly.app/.MainActivity
 
 > 版本号：每次 `assembleDebug` 自动把 `versionName` patch +1（versionCode 同步 +1）并写回 `android/app/build.gradle.kts`，与是否 commit 无关（规则 2026-09-02），保证每次测试包版本唯一。
 
-> 提示：校方接口 `cloudman.jinghaojian.net` 的 `campusId=4`（长安）/`campusId=3`（太白）请求**无需鉴权**；App 默认接口地址已写好，无需填 token。请在通用网络（能解析该域名）下测试。
+> 提示：校方接口 `cloudman.jinghaojian.net` 的 `campusId=4`（长安）/`campusId=36`（太白）请求**无需鉴权**；App 默认接口地址已写好，无需填 token。请在通用网络（能解析该域名）下测试。
 
 ## 后端快速开始
 见 `backend/README.md`。未配置 `SCHOOL_API_URL` 时后端写入演示数据，便于不接校方接口联调。

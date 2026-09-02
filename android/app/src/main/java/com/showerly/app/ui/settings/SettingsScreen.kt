@@ -66,12 +66,6 @@ fun SettingsScreen(container: AppContainer) {
                     )
                 }
             }
-            Text(
-                text = "太白校区接口存在问题，请等待后期更新。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
             SectionTitle("深色模式")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 DarkModePref.entries.forEach { d ->

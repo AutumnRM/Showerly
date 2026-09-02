@@ -9,6 +9,7 @@
 - 鉴权头：`Authorization: Bearer <JWT>`
 - 额外必需头：`timestamp`（ms）、`requestid`（`<ts>-<uuid>`）、`os=android`、`versionno=120`、`user-agent=okhttp-okgo/jeasonlzy`
 - `sign`、`encrypt` 头（疑似签名/加密）**经 PC 端裸测可不带**：仅带 `authorization` + `timestamp`/`requestid` 等即返回 200，已忽略（2026-09-01 验证）。
+- `uid` 参数是**性别过滤器**：带男号 uid 只返回男浴+混合浴（女浴全部隐藏），不带 uid 返回全量。PC 端验证与 Workers 轮询均**不要带 uid**（App 默认就不带）。（2026-09-02 实测）
 - 返回粒度：**一次请求返回该校区全部浴室数组**。示例：
   ```json
   {"code":"200","msg":"成功","data":[{
@@ -25,7 +26,7 @@
   - 空位 = `maxLoad - useCount`（下限 0）。注意个别浴室出现 `useCount>maxLoad`（如 8>5），容量累加时用 `max(maxLoad,useCount)`，避免负空位。
 
 ## 待办
-- 校区确认：`campusId=3`=太白校区（南校区浴室-男/女）、`campusId=4`=长安校区；其余 campusId 多属其它学校。太白接口存在问题（2026-09-02），App 已置灰，待更新后启用。
+- 校区确认（2026-09-02 定案）：`campusId=4`=长安校区（即南校区）、`campusId=36`=太白校区（北校区，男生/女生浴室各一）。`campusId=3`"南校区浴室-男/女"属**其它学校**——9-01 曾据名误判为太白，导致 App 数据明显错误，现已纠正。
 - 确认 JWT `exp` 判断 token 有效期；若过短，把 login/SSO 列入 TODO。
 - ~~确认 `sign`/`encrypt` 用途~~ 已解决：PC 端裸测可不带，Workers 可直接代理。
 
