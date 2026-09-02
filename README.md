@@ -9,8 +9,8 @@
 
 ## 状态（2026-09-01）
 - [x] V1.0（Phase 0）：逆向云达人接口（实测无需鉴权）；安卓 App 已可实时查询。
-  - 主屏：底部导航「主屏 / 设置」，卡片式浴室页面 + 左右滑动切换 + 下拉刷新。
-  - 设置：性别（男/女）、校区（长安/太白）、深色模式（跟随系统/浅色/深色）。
+  - 主屏：底部导航「主页 / 设置」，卡片式浴室页面 + 左右滑动切换 + 下拉刷新；多色有机球按空位/拥挤/爆满占比着色，点球预留浴位图入口。
+  - 设置：性别（男/女）、校区（长安/太白，均可用）、深色模式（跟随系统/浅色/深色）。
 - [ ] Phase 1：配置后端，实现历史人流曲线。
 - [ ] Phase 2-5：人满/损坏判定、趋势预测、人流预警 + Push、鸿蒙适配。
 
@@ -45,7 +45,9 @@ adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 adb shell am start -n com.showerly.app/.MainActivity
 ```
 
-> 提示：校方接口 `cloudman.jinghaojian.net` 当前的 `campusId=4` 请求**无需鉴权**；App 默认接口地址已写好，无需填 token。请在通用网络（能解析该域名）下测试。
+> 版本号：每次 `assembleDebug` 自动把 `versionName` patch +1（versionCode 同步 +1）并写回 `android/app/build.gradle.kts`，与是否 commit 无关（规则 2026-09-02），保证每次测试包版本唯一。
+
+> 提示：校方接口 `cloudman.jinghaojian.net` 的 `campusId=4`（长安）/`campusId=3`（太白）请求**无需鉴权**；App 默认接口地址已写好，无需填 token。请在通用网络（能解析该域名）下测试。
 
 ## 后端快速开始
 见 `backend/README.md`。未配置 `SCHOOL_API_URL` 时后端写入演示数据，便于不接校方接口联调。
@@ -55,3 +57,4 @@ adb shell am start -n com.showerly.app/.MainActivity
 
 ## License
 MIT
+

@@ -25,7 +25,7 @@
   - 空位 = `maxLoad - useCount`（下限 0）。注意个别浴室出现 `useCount>maxLoad`（如 8>5），容量累加时用 `max(maxLoad,useCount)`，避免负空位。
 
 ## 待办
-- 遍历 `campusId`（如 0~9）确认全部校区，用于 App 覆盖全校。
+- 校区确认：`campusId=3`=太白校区（南校区浴室-男/女）、`campusId=4`=长安校区；其余 campusId 多属其它学校。太白接口存在问题（2026-09-02），App 已置灰，待更新后启用。
 - 确认 JWT `exp` 判断 token 有效期；若过短，把 login/SSO 列入 TODO。
 - ~~确认 `sign`/`encrypt` 用途~~ 已解决：PC 端裸测可不带，Workers 可直接代理。
 

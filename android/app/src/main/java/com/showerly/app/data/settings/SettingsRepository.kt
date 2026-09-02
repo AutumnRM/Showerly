@@ -23,7 +23,11 @@ data class AppSettings(
     val darkMode: String = DarkModePref.SYSTEM.name
 ) {
     val genderEnum: Gender get() = runCatching { Gender.valueOf(gender) }.getOrDefault(Gender.MALE)
-    val campusEnum: Campus get() = runCatching { Campus.valueOf(campus) }.getOrDefault(Campus.CHANGAN)
+    val campusEnum: Campus
+        get() {
+            val c = runCatching { Campus.valueOf(campus) }.getOrDefault(Campus.CHANGAN)
+            return if (c.supported) c else Campus.CHANGAN
+        }
     val darkModeEnum: DarkModePref get() = runCatching { DarkModePref.valueOf(darkMode) }.getOrDefault(DarkModePref.SYSTEM)
 
     companion object {

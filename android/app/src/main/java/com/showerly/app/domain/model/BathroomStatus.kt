@@ -6,10 +6,10 @@ enum class Gender(val label: String, val sex: Int) {
     FEMALE("女", 1)
 }
 
-/** 校区。campusId: 校方接口参数。目前仅长安(id=4)已确认；太白待逆向。 */
+/** 校区。campusId: 校方接口参数。长安=4 可用；太白=3 已知映射，但接口异常，暂置灰等待更新。 */
 enum class Campus(val label: String, val campusId: String, val supported: Boolean) {
     CHANGAN("长安校区", "4", true),
-    TAIBAI("太白校区", "", false)
+    TAIBAI("太白校区", "3", false)
 }
 
 /** 深色模式偏好。 */

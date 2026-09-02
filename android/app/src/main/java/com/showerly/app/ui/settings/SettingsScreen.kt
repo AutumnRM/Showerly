@@ -67,7 +67,7 @@ fun SettingsScreen(container: AppContainer) {
                 }
             }
             Text(
-                text = "太白校区接口尚未逆向，暂以长安校区数据兜底。",
+                text = "太白校区接口存在问题，请等待后期更新。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
