@@ -9,8 +9,8 @@ plugins {
 // 无论是否 commit 都写回本文件，保证每次产出的 APK 版本号唯一。
 // 下面两行是版本状态（上次产出的版本），由 bumpVersion 任务在构建时写回新值；
 // defaultConfig 使用其 +1 后的值，故本次 APK 直接带上新版本号。
-val versionCodeState = 7
-val versionNameState = "0.1.6"
+val versionCodeState = 8
+val versionNameState = "0.1.7"
 
 val versionScriptFile = file("build.gradle.kts")
 val versionScript = versionScriptFile.readText()
