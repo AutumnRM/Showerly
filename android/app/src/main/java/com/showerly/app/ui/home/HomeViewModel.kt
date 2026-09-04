@@ -10,12 +10,19 @@ import com.showerly.app.di.AppContainer
 import com.showerly.app.domain.model.BathroomStatus
 import com.showerly.app.domain.model.Campus
 import com.showerly.app.domain.model.Gender
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import retrofit2.HttpException
+import java.net.UnknownHostException
+import java.net.SocketTimeoutException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -36,68 +43,94 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    private var refreshJob: Job? = null
 
     init {
         viewModelScope.launch {
-            // 仅当性别/校区变化才刷新，深色模式切换不触发网络请求
+            // 请求相关设置变化时刷新；深色模式切换不会触发网络请求。
             repo.settings
-                .map { it.genderEnum to it.campusEnum }
+                .map { it.toLoadConfig() }
                 .distinctUntilChanged()
-                .collect { (g, c) ->
-                    _uiState.value = _uiState.value.copy(gender = g, campus = c)
-                    refresh()
+                .collect { config ->
+                    startRefresh(config, forceNetwork = false)
                 }
         }
     }
 
     fun refresh() {
-        viewModelScope.launch {
-            val s = repo.settings.value
-            val campus = s.campusEnum
-            if (!campus.supported) {
-                _uiState.value = _uiState.value.copy(
+        startRefresh(repo.current.toLoadConfig(), forceNetwork = true)
+    }
+
+    private fun startRefresh(config: LoadConfig, forceNetwork: Boolean) {
+        refreshJob?.cancel()
+
+        val selectionChanged = _uiState.value.gender != config.gender ||
+            _uiState.value.campus != config.campus
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                bathrooms = if (selectionChanged) emptyList() else it.bathrooms,
+                gender = config.gender,
+                campus = config.campus,
+                error = null
+            )
+        }
+
+        if (!config.campus.supported) {
+            _uiState.update {
+                it.copy(
                     isLoading = false,
                     bathrooms = emptyList(),
-                    campus = campus,
-                    error = "${campus.label}接口尚未逆向，暂用长安校区数据"
+                    error = "${config.campus.label}暂不可用"
                 )
-                return@launch
             }
-            if (s.endpoint.isBlank()) {
-                _uiState.value = _uiState.value.copy(isLoading = false, error = "请在设置中填写校方接口地址")
-                return@launch
+            return
+        }
+        if (config.endpoint.isBlank()) {
+            _uiState.update { it.copy(isLoading = false, error = "校方接口地址为空") }
+            return
+        }
+
+        refreshJob = viewModelScope.launch {
+            try {
+                val response = api.getCrowd(
+                    url = buildUrl(config),
+                    headers = buildHeaders(config, forceNetwork)
+                )
+                if (response.code != null && response.code != "200") {
+                    error(response.msg?.takeIf { it.isNotBlank() } ?: "服务返回异常状态")
+                }
+                val source = response.data ?: error(
+                    response.msg?.takeIf { it.isNotBlank() } ?: "服务未返回浴室数据"
+                )
+                val filtered = filter(source, config.gender)
+                _uiState.value = HomeUiState(
+                    isLoading = false,
+                    bathrooms = filtered.map { it.toStatus() },
+                    gender = config.gender,
+                    campus = config.campus,
+                    timeText = formatNow(),
+                    error = if (filtered.isEmpty()) "当前筛选下暂无浴室" else null
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                // 保留同一筛选条件下的已有数据，失败提示由界面内联展示。
+                _uiState.update {
+                    it.copy(isLoading = false, error = e.toUserMessage())
+                }
             }
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            val url = buildUrl(s)
-            runCatching { api.getCrowd(url, buildHeaders(s)) }
-                .onSuccess { resp ->
-                    val filtered = filter(resp.data.orEmpty(), s.genderEnum)
-                    _uiState.value = HomeUiState(
-                        isLoading = false,
-                        bathrooms = filtered.map { it.toStatus() },
-                        gender = s.genderEnum,
-                        campus = campus,
-                        timeText = formatNow(),
-                        error = if (filtered.isEmpty()) "当前筛选下暂无浴室" else null
-                    )
-                }
-                .onFailure { e ->
-                    // 保留已有数据，仅提示错误，避免刷新时白屏
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = e.message ?: "请求失败，请检查网络或接口"
-                    )
-                }
         }
     }
 
-    private fun buildUrl(s: AppSettings): String {
-        val sep = if (s.endpoint.contains("?")) "&" else "?"
-        return if (s.endpoint.contains("campusId=")) s.endpoint
-        else s.endpoint + sep + "campusId=" + s.campusEnum.campusId
-    }
+    private fun buildUrl(config: LoadConfig): String = config.endpoint
+        .toHttpUrl()
+        .newBuilder()
+        .setQueryParameter("campusId", config.campus.campusId)
+        .build()
+        .toString()
 
-    private fun buildHeaders(s: AppSettings): Map<String, String> {
+    private fun buildHeaders(config: LoadConfig, forceNetwork: Boolean): Map<String, String> {
         val ts = System.currentTimeMillis().toString()
         val headers = mutableMapOf(
             "accept" to "application/json",
@@ -106,11 +139,17 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
             "timestamp" to ts,
             "requestid" to "$ts-${UUID.randomUUID()}",
             "os" to "android",
-            "versionno" to "120"
+            "versionno" to "120",
+            // 用户主动刷新时必须重新校验，避免 15 秒 HTTP 缓存让刷新看起来无效。
+            "Cache-Control" to if (forceNetwork) "no-cache" else "max-age=15"
         )
-        if (s.authHeaderValue.isNotBlank()) {
-            val name = s.authHeaderName.ifBlank { "Authorization" }
-            val value = if (s.authHeaderValue.contains(" ")) s.authHeaderValue else "Bearer ${s.authHeaderValue}"
+        if (config.authHeaderValue.isNotBlank()) {
+            val name = config.authHeaderName.ifBlank { "Authorization" }
+            val value = if (config.authHeaderValue.contains(" ")) {
+                config.authHeaderValue
+            } else {
+                "Bearer ${config.authHeaderValue}"
+            }
             headers[name] = value
         }
         return headers
@@ -146,6 +185,30 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
 
     private fun formatNow(): String =
         SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+
+    private fun Throwable.toUserMessage(): String = when (this) {
+        is UnknownHostException -> "网络不可用，请检查连接后重试"
+        is SocketTimeoutException -> "连接超时，请稍后重试"
+        is HttpException -> "服务暂时不可用（HTTP ${code()}）"
+        is IllegalArgumentException -> "接口地址无效"
+        else -> message?.takeIf { it.isNotBlank() } ?: "刷新失败，请稍后重试"
+    }
+
+    private data class LoadConfig(
+        val endpoint: String,
+        val authHeaderName: String,
+        val authHeaderValue: String,
+        val gender: Gender,
+        val campus: Campus
+    )
+
+    private fun AppSettings.toLoadConfig() = LoadConfig(
+        endpoint = endpoint.trim(),
+        authHeaderName = authHeaderName.trim(),
+        authHeaderValue = authHeaderValue.trim(),
+        gender = genderEnum,
+        campus = campusEnum
+    )
 
     companion object {
         fun factory(container: AppContainer) = viewModelFactory {

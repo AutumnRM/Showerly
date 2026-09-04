@@ -27,10 +27,10 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -44,6 +44,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -60,6 +61,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -90,8 +94,15 @@ fun HomeScreen(container: AppContainer) {
             TopAppBar(
                 title = { Text("Showerly") },
                 actions = {
-                    IconButton(onClick = vm::refresh) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "刷新")
+                    IconButton(onClick = vm::refresh, enabled = !state.isLoading) {
+                        if (state.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(Icons.Filled.Refresh, contentDescription = "刷新")
+                        }
                     }
                 }
             )
@@ -126,6 +137,7 @@ private fun CrowdPager(state: HomeUiState, onOpenBays: () -> Unit) {
     }
     Column(Modifier.fillMaxSize()) {
         OrderChip(state)
+        state.error?.let { InlineRefreshError(it, state.timeText) }
         HorizontalPager(
             state = pagerState,
             contentPadding = PaddingValues(0.dp),
@@ -135,7 +147,10 @@ private fun CrowdPager(state: HomeUiState, onOpenBays: () -> Unit) {
                 BathroomCard(state.bathrooms[page], state.timeText, onOpenBays)
             }
         }
-        BottomHint(state)
+        BottomHint(
+            currentPage = pagerState.currentPage,
+            pageCount = state.bathrooms.size
+        )
     }
 }
 
@@ -150,9 +165,9 @@ private fun OrderChip(state: HomeUiState) {
 }
 
 @Composable
-private fun BottomHint(state: HomeUiState) {
+private fun BottomHint(currentPage: Int, pageCount: Int) {
     Text(
-        text = "左右滑动切换浴室",
+        text = "${currentPage + 1} / $pageCount  ·  左右滑动切换浴室",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         textAlign = TextAlign.Center,
@@ -186,7 +201,7 @@ private fun BathroomCard(bathroom: BathroomStatus, timeText: String, onOpenBays:
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                AssistChip(onClick = {}, label = { Text(bathroom.statusLabel) })
+                StatusPill(bathroom)
             }
             Spacer(Modifier.height(6.dp))
             BreathingBall(bathroom, onOpenBays)
@@ -209,7 +224,7 @@ private fun BathroomCard(bathroom: BathroomStatus, timeText: String, onOpenBays:
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
             Spacer(Modifier.height(14.dp))
-            PlaceholderRow("历史人数趋势", "需后端 D1 采集历史后展示")
+            AdviceCard(bathroom)
             Spacer(Modifier.height(12.dp))
             Text(
                 text = "更新于 $timeText",
@@ -263,7 +278,11 @@ private fun BreathingBall(bathroom: BathroomStatus, onClick: () -> Unit) {
                 }
                 .clip(CircleShape)
                 .background(ballColor)
-                .clickable(onClick = onClick)
+                .clickable(role = Role.Button, onClick = onClick)
+                .semantics {
+                    contentDescription =
+                        "${bathroom.name}，${bathroom.useCount} 人在洗，空位 ${bathroom.vacant}，查看浴位详情"
+                }
         ) {
             Canvas(Modifier.fillMaxSize()) {
                 val radius = size.minDimension / 2f
@@ -292,7 +311,30 @@ private data class Particle(
 )
 
 @Composable
-private fun PlaceholderRow(title: String, hint: String) {
+private fun StatusPill(bathroom: BathroomStatus) {
+    Surface(
+        shape = CircleShape,
+        color = ratioColor(bathroom.occupancyRatio).copy(alpha = 0.16f),
+        contentColor = MaterialTheme.colorScheme.onSurface
+    ) {
+        Text(
+            text = bathroom.statusLabel,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun AdviceCard(bathroom: BathroomStatus) {
+    val (title, hint) = when {
+        bathroom.capacity == 0 -> "暂无容量信息" to "可以稍后刷新再试"
+        bathroom.occupancyRatio >= 0.9f -> "接近满员" to "建议错峰前往，避免长时间等待"
+        bathroom.occupancyRatio >= 0.6f -> "当前人流较多" to "可能需要短暂等待"
+        bathroom.occupancyRatio >= 0.3f -> "空位较充足" to "现在前往通常无需久等"
+        else -> "当前很空闲" to "现在是不错的洗浴时段"
+    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
@@ -305,6 +347,29 @@ private fun PlaceholderRow(title: String, hint: String) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun InlineRefreshError(message: String, timeText: String) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer
+        )
+    ) {
+        Text(
+            text = buildString {
+                append(message)
+                if (timeText.isNotBlank()) append(" · 正在显示 $timeText 的数据")
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+        )
     }
 }
 
@@ -336,7 +401,6 @@ private fun LoadingPanel() {
         CircularProgressIndicator()
     }
 }
-
 
 
 

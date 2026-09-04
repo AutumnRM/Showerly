@@ -69,6 +69,22 @@ class SettingsRepository(
         }
     }
 
+    /**
+     * 只更新界面可编辑的偏好，避免多个快速操作各自读出旧快照后互相覆盖。
+     * 接口地址和鉴权信息等非界面字段会原样保留。
+     */
+    suspend fun updatePreferences(
+        gender: Gender? = null,
+        campus: Campus? = null,
+        darkMode: DarkModePref? = null
+    ) {
+        dataStore.edit { prefs ->
+            gender?.let { prefs[KEY_GENDER] = it.name }
+            campus?.let { prefs[KEY_CAMPUS] = it.name }
+            darkMode?.let { prefs[KEY_DARK_MODE] = it.name }
+        }
+    }
+
     private companion object {
         val KEY_ENDPOINT = stringPreferencesKey("school_endpoint")
         val KEY_HEADER_NAME = stringPreferencesKey("auth_header_name")

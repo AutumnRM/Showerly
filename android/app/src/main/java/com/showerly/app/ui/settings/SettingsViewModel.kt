@@ -11,7 +11,7 @@ import com.showerly.app.domain.model.Gender
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 data class SettingsUiState(
@@ -26,37 +26,31 @@ class SettingsViewModel(private val container: AppContainer) : ViewModel() {
 
     init {
         viewModelScope.launch {
-            val s = container.settingsRepository.settingsFlow.first()
-            _uiState.value = SettingsUiState(
-                gender = s.genderEnum,
-                campus = s.campusEnum,
-                darkMode = s.darkModeEnum
-            )
+            container.settingsRepository.settings.collectLatest { s ->
+                _uiState.value = SettingsUiState(
+                    gender = s.genderEnum,
+                    campus = s.campusEnum,
+                    darkMode = s.darkModeEnum
+                )
+            }
         }
     }
 
-    fun setGender(v: Gender) { _uiState.value = _uiState.value.copy(gender = v); persist() }
+    fun setGender(v: Gender) {
+        _uiState.value = _uiState.value.copy(gender = v)
+        viewModelScope.launch { container.settingsRepository.updatePreferences(gender = v) }
+    }
+
     fun setCampus(v: Campus) {
         if (v.supported) {
             _uiState.value = _uiState.value.copy(campus = v)
-            persist()
+            viewModelScope.launch { container.settingsRepository.updatePreferences(campus = v) }
         }
     }
-    fun setDarkMode(v: DarkModePref) { _uiState.value = _uiState.value.copy(darkMode = v); persist() }
 
-    // 仅合并 UI 控制的字段，接口/auth 等保持现状。
-    private fun persist() {
-        val s = _uiState.value
-        viewModelScope.launch {
-            val current = container.settingsRepository.settingsFlow.first()
-            container.settingsRepository.save(
-                current.copy(
-                    gender = s.gender.name,
-                    campus = s.campus.name,
-                    darkMode = s.darkMode.name
-                )
-            )
-        }
+    fun setDarkMode(v: DarkModePref) {
+        _uiState.value = _uiState.value.copy(darkMode = v)
+        viewModelScope.launch { container.settingsRepository.updatePreferences(darkMode = v) }
     }
 
     companion object {
