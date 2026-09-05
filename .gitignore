@@ -26,6 +26,17 @@ backend/.env
 .DS_Store
 Thumbs.db
 
+# Xcode / iOS
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.xcscmblueprint
+*.ipa
+*.dSYM.zip
+*.dSYM
+ios/build/
+
 # Logs / misc
 *.log
 *.tmp
